@@ -108,10 +108,10 @@ func WithUserAgent(userAgent string) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	CreateOrder(ctx context.Context, body OrderRequest) (orderResponse OrderResponse, err error)
+	CreateOrder(ctx context.Context, body OrderRequest) (orderResponse OrderResponse, billingTrx BillingTransaction, err error)
 }
 
-func (c *Client) CreateOrder(ctx context.Context, transactionId string, body OrderRequest) (orderResponse OrderResponse, err error) {
+func (c *Client) CreateOrder(ctx context.Context, transactionId string, body OrderRequest) (orderResponse OrderResponse, billingTrx BillingTransaction, err error) {
 	// webhook url
 	//webUrl, err := url.Parse(billingConfig.AppBaseUrl + "/2021-10-01/billing-webhook/" + transactionId)
 	//body.Webhook = webUrl.String()
@@ -183,11 +183,15 @@ func (c *Client) CreateOrder(ctx context.Context, transactionId string, body Ord
 	bodyByte, err := ioutil.ReadAll(rsp.Body) // response body is []byte
 
 	if rsp.StatusCode >= 200 && rsp.StatusCode <= 299 {
-		var result OrderResponse
-		if err := json.Unmarshal(bodyByte, &result); err != nil { // Parse []byte to the go struct pointer
+		if err := json.Unmarshal(bodyByte, &orderResponse); err != nil { // Parse []byte to the go struct pointer
 			log.Println("Can not unmarshal JSON")
+		} else {
+			billingTrx.OrderID = orderResponse.OrderID
+			billingTrx.OrderPaymentToken = orderResponse.PaymentToken
+			billingTrx.AppTrxId = transactionId
 		}
-		return result, err
+
+		return
 	} else {
 		err = errors.New(fmt.Sprintf("%s", bodyByte))
 	}
