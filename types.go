@@ -1,5 +1,9 @@
 package billing
 
+const (
+	SUCCESS PaymentStatus = "SUCCESS"
+)
+
 type OrderRequest struct {
 	CustomerEmail    string
 	CustomerFullName string
@@ -19,3 +23,11 @@ type OrderResponse struct {
 	Description  string
 	Code         string
 }
+
+type PaymentWebhook struct {
+	Hash          string `json:"Hash"`
+	Status        string `json:"Status"`
+	TransactionID string `json:"TransactionID"`
+}
+
+type PaymentStatus string

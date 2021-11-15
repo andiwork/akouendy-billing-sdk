@@ -113,8 +113,8 @@ type ClientInterface interface {
 
 func (c *Client) CreateOrder(ctx context.Context, transactionId string, body OrderRequest) (orderResponse OrderResponse, billingTrx BillingTransaction, err error) {
 	// webhook url
-	//webUrl, err := url.Parse(billingConfig.AppBaseUrl + "/2021-10-01/billing-webhook/" + transactionId)
-	//body.Webhook = webUrl.String()
+	webUrl, err := url.Parse(billingConfig.AppBaseUrl + "/2021-10-01/billing-webhook/" + transactionId)
+	body.Webhook = webUrl.String()
 
 	queryUrl, err := url.Parse(c.Endpoint)
 	if err != nil {

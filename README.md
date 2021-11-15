@@ -17,7 +17,6 @@ db.AutoMigrate(billing.MigrateModels()...)
 		req.Header.Add("Authorization", request.HeaderParameter("Authorization"))
 		return nil
 	}))
-	log.Println("===== OrderNewClient ===", err)
 	if err == nil {
 		request := billing.OrderRequest{}
 		request.AppID = viper.GetString("billing-app.id")

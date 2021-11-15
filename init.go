@@ -5,6 +5,7 @@ type Config struct {
 	Debug      bool
 	Env        string
 	billingUrl string
+	AppToken   string
 }
 
 var billingConfig Config
