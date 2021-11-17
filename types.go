@@ -12,6 +12,7 @@ type OrderRequest struct {
 	PriceID          string `json:"PriceId"`
 	AppID            string `json:"AppId"`
 	Webhook          string
+	ReturnUrl        string
 }
 
 type OrderResponse struct {
