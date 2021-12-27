@@ -32,3 +32,14 @@ type PaymentWebhook struct {
 }
 
 type PaymentStatus string
+
+type OrderSubsRequest struct {
+	CustomerID string `json:"CustomerId"`
+	PriceID    string `json:"PriceId"`
+}
+
+type OrderSubsReponse struct {
+	CustomerID  string `json:"CustomerId"`
+	PriceID     string `json:"PriceId"`
+	IsSubscribe bool
+}

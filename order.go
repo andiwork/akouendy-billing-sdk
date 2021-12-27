@@ -108,7 +108,8 @@ func WithUserAgent(userAgent string) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	CreateOrder(ctx context.Context, body OrderRequest) (orderResponse OrderResponse, billingTrx BillingTransaction, err error)
+	CreateOrderCreateOrder(ctx context.Context, transactionId string, body OrderRequest) (orderResponse OrderResponse, billingTrx BillingTransaction, err error)
+	GetOrderStatus(ctx context.Context, body OrderSubsRequest) (orderSubsResponse OrderSubsReponse, err error)
 }
 
 func (c *Client) CreateOrder(ctx context.Context, transactionId string, body OrderRequest) (orderResponse OrderResponse, billingTrx BillingTransaction, err error) {
@@ -191,6 +192,86 @@ func (c *Client) CreateOrder(ctx context.Context, transactionId string, body Ord
 			billingTrx.AppTrxId = transactionId
 		}
 
+		return
+	} else {
+		err = errors.New(fmt.Sprintf("%s", bodyByte))
+	}
+
+	return
+}
+
+func (c *Client) GetOrderStatus(ctx context.Context, body OrderSubsRequest) (orderSubsResponse OrderSubsReponse, err error) {
+
+	queryUrl, err := url.Parse(c.Endpoint)
+	if err != nil {
+		return
+	}
+	basePath := fmt.Sprintf("/order/check")
+	if basePath[0] == '/' {
+		basePath = basePath[1:]
+	}
+
+	queryUrl, err = queryUrl.Parse(basePath)
+	if err != nil {
+		return
+	}
+
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return
+	}
+	bodyReader := bytes.NewReader(buf)
+
+	req, err := http.NewRequest("POST", queryUrl.String(), bodyReader)
+	if err != nil {
+		log.Println("NewRequest Error", err)
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+
+	req = req.WithContext(ctx)
+	req.Header.Set("User-Agent", c.UserAgent)
+	if c.RequestBefore != nil {
+		err = c.RequestBefore(ctx, req)
+		if err != nil {
+			return
+		}
+	}
+	// Debug request
+	if billingConfig.Debug {
+		dump, err := httputil.DumpRequest(req, true)
+		if err != nil {
+			log.Println("DumpRequest Error", err)
+		}
+		log.Printf("DumpRequest = %s", dump)
+	}
+	rsp, err := c.Client.Do(req)
+	if err != nil {
+		return
+	}
+
+	if billingConfig.Debug {
+		dump, err := httputil.DumpResponse(rsp, true)
+		if err != nil {
+			log.Println(err, "DumpResponse Error")
+		}
+		log.Printf("DumpResponse = %s", dump)
+	}
+
+	if c.ResponseAfter != nil {
+		err = c.ResponseAfter(ctx, rsp)
+		if err != nil {
+			return
+		}
+	}
+
+	defer rsp.Body.Close()
+	bodyByte, err := ioutil.ReadAll(rsp.Body) // response body is []byte
+
+	if rsp.StatusCode >= 200 && rsp.StatusCode <= 299 {
+		if err := json.Unmarshal(bodyByte, &orderSubsResponse); err != nil { // Parse []byte to the go struct pointer
+			log.Println("Can not unmarshal JSON")
+		}
 		return
 	} else {
 		err = errors.New(fmt.Sprintf("%s", bodyByte))
