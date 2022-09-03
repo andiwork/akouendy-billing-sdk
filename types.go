@@ -9,6 +9,7 @@ type OrderRequest struct {
 	CustomerFullName string
 	CustomerID       string `json:"CustomerId"`
 	BillingProvider  string
+	CountryAlpha3    string
 	PriceID          string `json:"PriceId"`
 	AppID            string `json:"AppId"`
 	Webhook          string
