@@ -1,5 +1,7 @@
 package billing
 
+import "time"
+
 const (
 	SUCCESS PaymentStatus = "SUCCESS"
 )
@@ -43,4 +45,5 @@ type OrderSubsReponse struct {
 	CustomerID  string `json:"CustomerId"`
 	PriceID     string `json:"PriceId"`
 	IsSubscribe bool
+	ExpireDate  time.Time
 }
