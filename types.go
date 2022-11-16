@@ -16,6 +16,7 @@ type OrderRequest struct {
 	AppID            string `json:"AppId"`
 	Webhook          string
 	ReturnUrl        string
+	OwnedBy          string
 }
 
 type OrderResponse struct {
