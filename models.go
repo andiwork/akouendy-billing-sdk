@@ -14,9 +14,10 @@ const (
 type BillingTransaction struct {
 	utils.Model
 	OrderID           string
-	OrderPaymentToken string
+	PaymentToken string
 	AppTrxId          string
 	CountryAlpha3     string `gorm:"default:SEN"`
+	PaymentID           string
 }
 
 type SubscriptionResponse struct {

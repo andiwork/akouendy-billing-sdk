@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -108,8 +109,10 @@ func WithUserAgent(userAgent string) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	CreateOrderCreateOrder(ctx context.Context, transactionId string, body OrderRequest) (orderResponse OrderResponse, billingTrx BillingTransaction, err error)
+	CreateOrder(ctx context.Context, transactionId string, body OrderRequest) (orderResponse OrderResponse, billingTrx BillingTransaction, err error)
 	GetOrderStatus(ctx context.Context, body OrderSubsRequest) (orderSubsResponse OrderSubsReponse, err error)
+	CreatePayment(ctx context.Context, transactionId string, body PaymentRequest) (paymentResponse PaymentResponse, billingTrx BillingTransaction, err error)
+	GetPaymentStatus(ctx context.Context, paymentToken string) (paymentStatusResponse PaymentStatusResponse, err error)
 }
 
 func (c *Client) CreateOrder(ctx context.Context, transactionId string, body OrderRequest) (orderResponse OrderResponse, billingTrx BillingTransaction, err error) {
@@ -188,7 +191,7 @@ func (c *Client) CreateOrder(ctx context.Context, transactionId string, body Ord
 			log.Println("Can not unmarshal JSON")
 		} else {
 			billingTrx.OrderID = orderResponse.OrderID
-			billingTrx.OrderPaymentToken = orderResponse.PaymentToken
+			billingTrx.PaymentToken = orderResponse.PaymentToken
 			billingTrx.AppTrxId = transactionId
 		}
 
@@ -270,6 +273,170 @@ func (c *Client) GetOrderStatus(ctx context.Context, body OrderSubsRequest) (ord
 
 	if rsp.StatusCode >= 200 && rsp.StatusCode <= 299 {
 		if err := json.Unmarshal(bodyByte, &orderSubsResponse); err != nil { // Parse []byte to the go struct pointer
+			log.Println("Can not unmarshal JSON")
+		}
+		return
+	} else {
+		err = errors.New(fmt.Sprintf("%s", bodyByte))
+	}
+
+	return
+}
+
+func (c *Client) CreatePayment(ctx context.Context, transactionId string, body PaymentRequest) (paymentResponse PaymentResponse, billingTrx BillingTransaction, err error) {
+	// webhook url
+	webUrl, err := url.Parse(billingConfig.AppBaseUrl + "/2023-05-03/payment-webhook/" + transactionId)
+	body.Webhook = webUrl.String()
+	str := body.AppId + "|" + body.TransactionId + "|" + strconv.Itoa(body.TotalAmount) + "|akouna_matata"
+	body.Hash = hash512(str)
+	queryUrl, err := url.Parse(c.Endpoint)
+	if err != nil {
+		return
+	}
+	basePath := fmt.Sprintf("billing/payment/init")
+	if basePath[0] == '/' {
+		basePath = basePath[1:]
+	}
+
+	queryUrl, err = queryUrl.Parse(basePath)
+	if err != nil {
+		return
+	}
+
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return
+	}
+	bodyReader := bytes.NewReader(buf)
+
+	req, err := http.NewRequest("POST", queryUrl.String(), bodyReader)
+	if err != nil {
+		log.Println("NewRequest Error", err)
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+
+	req = req.WithContext(ctx)
+	req.Header.Set("User-Agent", c.UserAgent)
+	if c.RequestBefore != nil {
+		err = c.RequestBefore(ctx, req)
+		if err != nil {
+			return
+		}
+	}
+	// Debug request
+	if billingConfig.Debug {
+		dump, err := httputil.DumpRequest(req, true)
+		if err != nil {
+			log.Println("DumpRequest Error", err)
+		}
+		log.Printf("DumpRequest = %s", dump)
+	}
+	rsp, err := c.Client.Do(req)
+	if err != nil {
+		return
+	}
+
+	if billingConfig.Debug {
+		dump, err := httputil.DumpResponse(rsp, true)
+		if err != nil {
+			log.Println(err, "DumpResponse Error")
+		}
+		log.Printf("DumpResponse = %s", dump)
+	}
+
+	if c.ResponseAfter != nil {
+		err = c.ResponseAfter(ctx, rsp)
+		if err != nil {
+			return
+		}
+	}
+
+	defer rsp.Body.Close()
+	bodyByte, err := ioutil.ReadAll(rsp.Body) // response body is []byte
+
+	if rsp.StatusCode >= 200 && rsp.StatusCode <= 299 {
+		if err := json.Unmarshal(bodyByte, &paymentResponse); err != nil { // Parse []byte to the go struct pointer
+			log.Println("Can not unmarshal JSON")
+		} else {
+			billingTrx.PaymentToken = paymentResponse.Token
+			billingTrx.AppTrxId = transactionId
+		}
+
+		return
+	} else {
+		err = errors.New(fmt.Sprintf("%s", bodyByte))
+	}
+
+	return
+}
+
+func (c *Client) GetPaymentStatus(ctx context.Context, paymentToken string) (paymentStatusResponse PaymentStatusResponse, err error) {
+
+	queryUrl, err := url.Parse(c.Endpoint)
+	if err != nil {
+		return
+	}
+	basePath := fmt.Sprintf("/payment/%s",paymentToken)
+	if basePath[0] == '/' {
+		basePath = basePath[1:]
+	}
+
+	queryUrl, err = queryUrl.Parse(basePath)
+	if err != nil {
+		return
+	}
+
+
+
+	req, err := http.NewRequest("GET", queryUrl.String(), nil)
+	if err != nil {
+		log.Println("NewRequest Error", err)
+	}
+
+	req.Header.Add("Content-Type", "application/json")
+
+	req = req.WithContext(ctx)
+	req.Header.Set("User-Agent", c.UserAgent)
+	if c.RequestBefore != nil {
+		err = c.RequestBefore(ctx, req)
+		if err != nil {
+			return
+		}
+	}
+	// Debug request
+	if billingConfig.Debug {
+		dump, err := httputil.DumpRequest(req, true)
+		if err != nil {
+			log.Println("DumpRequest Error", err)
+		}
+		log.Printf("DumpRequest = %s", dump)
+	}
+	rsp, err := c.Client.Do(req)
+	if err != nil {
+		return
+	}
+
+	if billingConfig.Debug {
+		dump, err := httputil.DumpResponse(rsp, true)
+		if err != nil {
+			log.Println(err, "DumpResponse Error")
+		}
+		log.Printf("DumpResponse = %s", dump)
+	}
+
+	if c.ResponseAfter != nil {
+		err = c.ResponseAfter(ctx, rsp)
+		if err != nil {
+			return
+		}
+	}
+
+	defer rsp.Body.Close()
+	bodyByte, err := ioutil.ReadAll(rsp.Body) // response body is []byte
+
+	if rsp.StatusCode >= 200 && rsp.StatusCode <= 299 {
+		if err := json.Unmarshal(bodyByte, &paymentStatusResponse); err != nil { // Parse []byte to the go struct pointer
 			log.Println("Can not unmarshal JSON")
 		}
 		return

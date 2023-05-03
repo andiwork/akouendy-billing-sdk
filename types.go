@@ -1,9 +1,13 @@
 package billing
 
-import "time"
+import (
+	"time"
+)
 
 const (
 	SUCCESS PaymentStatus = "SUCCESS"
+	SANDBOX Environment   = "sandbox"
+	PROD    Environment   = "prod"
 )
 
 type OrderRequest struct {
@@ -47,4 +51,35 @@ type OrderSubsReponse struct {
 	PriceID     string `json:"PriceId"`
 	IsSubscribe bool
 	ExpireDate  time.Time
+}
+
+type Environment string
+
+type PaymentRequest struct {
+	AppId         string
+	TransactionId string
+	TotalAmount   int
+	Hash          string
+	Description   string
+	ReturnUrl     string
+	Webhook       string
+	Env           Environment
+	Email         string
+	FullName      string
+	SuccessMsg    string
+	FailedMsg     string
+}
+
+type PaymentResponse struct {
+	Code       string
+	Text       string
+	Status     PaymentStatus
+	Token      string
+	PaymentUrl string
+}
+
+type PaymentStatusResponse struct {
+	Status           PaymentStatus
+	TotalPayedAmount int
+	Email            string
 }
