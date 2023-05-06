@@ -283,9 +283,9 @@ func (c *Client) GetOrderStatus(ctx context.Context, body OrderSubsRequest) (ord
 	return
 }
 
-func (c *Client) CreatePayment(ctx context.Context, transactionId string, body PaymentRequest) (paymentResponse PaymentResponse, billingTrx BillingTransaction, err error) {
+func (c *Client) CreatePayment(ctx context.Context, body PaymentRequest) (paymentResponse PaymentResponse, billingTrx BillingTransaction, err error) {
 	// webhook url
-	webUrl, err := url.Parse(billingConfig.AppBaseUrl + "/2023-05-03/payment-webhook/" + transactionId)
+	webUrl, err := url.Parse(billingConfig.AppBaseUrl + "/2023-05-03/payment-webhook/")
 	body.Webhook = webUrl.String()
 	str := body.AppId + "|" + body.TransactionId + "|" + strconv.Itoa(body.TotalAmount) + "|akouna_matata"
 	body.Hash = hash512(str)
@@ -360,7 +360,7 @@ func (c *Client) CreatePayment(ctx context.Context, transactionId string, body P
 			log.Println("Can not unmarshal JSON")
 		} else {
 			billingTrx.PaymentToken = paymentResponse.Token
-			billingTrx.AppTrxId = transactionId
+			billingTrx.AppTrxId = body.TransactionId
 		}
 
 		return
