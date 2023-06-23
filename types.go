@@ -68,6 +68,7 @@ type PaymentRequest struct {
 	FullName      string
 	SuccessMsg    string
 	FailedMsg     string
+	ClientId      string
 }
 
 type PaymentResponse struct {
